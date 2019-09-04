@@ -20,10 +20,10 @@ def tf2onnx_wrap(topo, graph, outputs, target_opset):
     custom_op_handlers.update(topo.custom_op_dict)
     try:
         g = process_tf_graph(graph,
-                         continue_on_error=topo.debug_mode,
-                         opset=target_opset,
-                         custom_op_handlers=custom_op_handlers,
-                         output_names=outputs)
+                             continue_on_error=topo.debug_mode,
+                             opset=target_opset,
+                             custom_op_handlers=custom_op_handlers,
+                             output_names=outputs)
         return g
 
     except Exception as e:

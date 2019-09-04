@@ -21,8 +21,8 @@ def _calculate_keras_dot_output_shapes(operator):
         op = operator.raw_operator
         shape = []
         for i in op.output.shape:
-            if isinstance(i.value, numbers.Integral):
-                shape.append(i.value)
+            if isinstance(i, numbers.Integral):
+                shape.append(i)
             else:
                 shape.append(None)
         operator.outputs[0].type.shape = shape

@@ -140,6 +140,7 @@ keras_layer_to_operator = {
     _layer.UpSampling2D: convert_keras_upsample_2d,
     _layer.UpSampling3D: convert_keras_upsample_3d,
     _layer.BatchNormalization: convert_keras_batch_normalization,
+    _layer.normalization_v2.BatchNormalization: convert_keras_batch_normalization,
 
     _adv_activations.LeakyReLU: convert_keras_advanced_activation,
     _adv_activations.ThresholdedReLU: convert_keras_advanced_activation,

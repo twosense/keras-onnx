@@ -39,7 +39,7 @@ def k2o_logger():  # type: () -> logging.Logger
         ch.setLevel(logging.WARNING)
         logger.addHandler(ch)
     logger.setLevel(logging.WARNING)
-    tf.logging.set_verbosity(tf.logging.WARN)
+    # tf.logging.set_verbosity(tf.logging.WARN)
     return logger
 
 

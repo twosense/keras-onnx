@@ -128,7 +128,7 @@ def create_subgraph(tf_graph, node_list, sess, dst_scope=None):
                     output_node.attr["dtype"].CopyFrom(input_node.attr["DstT"])
                 else:
                     raise RuntimeError("Can't get the node data type for %s" % input_node.name)
-            ts_shape = tf.graph_util.tensor_shape_from_node_def_name(tf_graph, input_node.name)
+            ts_shape = tf.compat.v1.graph_util.tensor_shape_from_node_def_name(tf_graph, input_node.name)
             output_node.attr["shape"].CopyFrom(
                 attr_value_pb2.AttrValue(shape=ts_shape.as_proto()))
             output_graph_def.node.extend([output_node])
@@ -144,5 +144,5 @@ def create_subgraph(tf_graph, node_list, sess, dst_scope=None):
 
 
 def is_placeholder_node(node):
-    return len(node.inputs) == 0 and node.type in ['Placeholder', "PlaceholderV2", 'PlaceholderWithDefault']
-
+    return len(node.inputs) == 0 and node.type in ['Placeholder', "PlaceholderV2", 'PlaceholderWithDefault'] and \
+           node.outputs[0].dtype.name != 'resource'

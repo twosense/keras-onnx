@@ -9,6 +9,7 @@ import onnx
 import numpy as np
 from distutils.version import StrictVersion
 
+
 from keras2onnx.proto import keras
 
 
@@ -16,6 +17,10 @@ class TestOpsetComparison(unittest.TestCase):
     @unittest.skipIf(StrictVersion(onnx.__version__) < StrictVersion("1.2"),
                      "Not supported in ONNX version less than 1.2, since this test requires opset 7.")
     def test_model_creation(self):
+        import tensorflow as tf
+        ret = tf.compat.v1.enable_eager_execution()
+        keras.tf2.disable()
+
         N, C, H, W = 2, 3, 5, 5
         input1 = keras.layers.Input(shape=(H, W, C))
         x1 = keras.layers.Dense(8, activation='relu')(input1)

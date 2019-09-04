@@ -21,9 +21,9 @@ def _infer_variable_type(tensor, opset):
     tensor_shape = []
     if tensor.shape not in (tf.TensorShape(None), tf.TensorShape([])):
         if opset > 8:
-            tensor_shape = [d.value for d in tensor.shape]
+            tensor_shape = [d for d in tensor.shape]
         else:  # most inference engine has problem with unset dim param if they released around opset 8 publish
-            tensor_shape = ['None' if d.value is None else d.value for d in tensor.shape]
+            tensor_shape = ['None' if d is None else d for d in tensor.shape]
 
     # Determine the tensor's element type
     tensor_type = tensor.dtype
@@ -58,6 +58,8 @@ def _locate_inputs_by_node(node_list, varset):
             op = i_.op
             if op.name[0] == '^':
                 continue
+            if op.type == 'ReadVariableOp':
+                continue
             if (not is_placeholder_node(op)) and op in node_list:
                 continue
 
@@ -79,7 +81,8 @@ def _locate_outputs(node_list, varset):
     assert nodes
     for n0_ in nodes:
         for n_ in n0_.outputs:
-            var_output.append(varset.get_local_variable_or_declare_one(n_.name, _infer_variable_type(n_, varset.target_opset)))
+            var_output.append(
+                varset.get_local_variable_or_declare_one(n_.name, _infer_variable_type(n_, varset.target_opset)))
 
     return var_output
 
@@ -350,7 +353,8 @@ def _finalize_tf2onnx_op(topo, operator, varset):
                                    operator.full_name + '_identity')
                 outputs.append(idf_.name)
                 iv = varset.get_local_variable_or_declare_one(idf_.name, _infer_variable_type(n_, varset.target_opset))
-                ov = varset.get_local_variable_or_declare_one(nodes[n0_][i_], _infer_variable_type(n_, varset.target_opset))
+                ov = varset.get_local_variable_or_declare_one(nodes[n0_][i_],
+                                                              _infer_variable_type(n_, varset.target_opset))
                 operator.add_output(iv)
                 oop = varset.declare_local_operator('identity')
                 oop.add_input(iv)

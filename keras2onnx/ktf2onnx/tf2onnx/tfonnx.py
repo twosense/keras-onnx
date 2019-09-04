@@ -17,7 +17,7 @@ import numpy as np
 from onnx import helper, onnx_pb
 import tensorflow as tf
 from tensorflow.python.framework import graph_util
-from tensorflow.tools.graph_transforms import TransformGraph
+# from tensorflow.tools.graph_transforms import TransformGraph
 
 import tf2onnx
 import tf2onnx.onnx_opset  # pylint: disable=unused-import
@@ -397,7 +397,7 @@ def tf_optimize(inputs, outputs, graph_def, fold_constant=None):
     ])
     needed_names = [utils.node_name(i) for i in inputs] + [utils.node_name(i) for i in outputs]
     graph_def = graph_util.extract_sub_graph(graph_def, needed_names)
-    graph_def = TransformGraph(graph_def, inputs, outputs, transforms)
+    # graph_def = TransformGraph(graph_def, inputs, outputs, transforms)
     return graph_def
 
 

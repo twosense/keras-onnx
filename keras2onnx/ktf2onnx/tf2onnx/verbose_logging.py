@@ -69,7 +69,7 @@ def set_tf_verbosity(level):
     """ Set TF logging verbosity."""
     # TF log is too verbose, adjust it
     level = ERROR if level >= INFO else level
-    tf.logging.set_verbosity(level)
+    # tf.logging.set_verbosity(level)
 
     # TF_CPP_MIN_LOG_LEVEL:
     #   0 = all messages are logged (default behavior)

@@ -7,6 +7,8 @@ import keras2onnx.common as _cmn
 import keras2onnx.proto as _proto
 
 
+_proto.keras.tf2.disable()
+
 class SubgraphTestCase(unittest.TestCase):
     """
     Tests for subgraph operations
@@ -18,13 +20,13 @@ class SubgraphTestCase(unittest.TestCase):
             i0 = tf.constant(1.0, shape=[2, 3], name="a")
             t_add = tf.add(
                 i0,
-                tf.placeholder(dtype=np.float32),
+                tf.compat.v1.placeholder(dtype=np.float32),
                 name="add")
 
         self.assertNotEqual(t_add.op.inputs[0].op.type, 'Placeholder')
         node_list = g.get_operations()
         node_list.remove(i0.op)
-        sgv, replacement = create_subgraph(g, node_list, tf.Session())
+        sgv, replacement = create_subgraph(g, node_list, tf.compat.v1.Session())
         self.assertEqual(sgv.get_operation_by_name(t_add.op.name).inputs[0].op.type, 'Placeholder')
 
 
