@@ -58,8 +58,6 @@ def _locate_inputs_by_node(node_list, varset):
             op = i_.op
             if op.name[0] == '^':
                 continue
-            if op.type == 'ReadVariableOp':
-                continue
             if (not is_placeholder_node(op)) and op in node_list:
                 continue
 
@@ -313,7 +311,7 @@ def _on_parsing_tf_subgraph(node_list, varset):
     operator.nodelist = node_list
 
     sess = keras.backend.get_session()
-    subgraph, replacement = create_subgraph(sess.graph, node_list, sess, operator.full_name)
+    subgraph, replacement = create_subgraph(node_list[0].graph, node_list, sess, operator.full_name)
     setattr(operator, 'subgraph', subgraph)
     vars_, ts = _locate_inputs_by_node(node_list, varset)
 

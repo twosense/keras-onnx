@@ -7,8 +7,6 @@ import keras2onnx.common as _cmn
 import keras2onnx.proto as _proto
 
 
-_proto.keras.tf2.disable()
-
 class SubgraphTestCase(unittest.TestCase):
     """
     Tests for subgraph operations

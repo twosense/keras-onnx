@@ -19,6 +19,7 @@ from ._builtin import set_converter, tf2onnx_builtin_conversion
 
 
 class KerasTfModelContainer(object):
+
     def __init__(self, graph, model=None):
         self._input_raw_names = list()
         self._output_raw_names = list()
@@ -82,11 +83,8 @@ def convert_keras(model, name=None, doc_string='', target_opset=None, channel_fi
         raise Exception("This is a tensorflow keras model, but keras standalone converter is used." +
                         " Please set environment variable TF_KERAS = 1.")
 
-    if name is None:
-        name = model.name
-
-    if target_opset is None:
-        target_opset = get_opset_number_from_onnx()
+    name = name or model.name
+    target_opset = target_opset or get_opset_number_from_onnx()
 
     tf_graph = model.outputs[0].graph
     output_names = [n.name for n in model.outputs]
@@ -170,7 +168,7 @@ def convert_tensorflow(frozen_graph_def,
     :return an ONNX ModelProto
     """
     set_logger_level(logging.DEBUG if debug_mode else logging.INFO)
-    from tf2onnx import tfonnx
+    import tf2onnx
 
     if target_opset is None:
         target_opset = get_opset_number_from_onnx()
@@ -178,7 +176,7 @@ def convert_tensorflow(frozen_graph_def,
     if not doc_string:
         doc_string = "converted from {}".format(name)
 
-    graph_def = tfonnx.tf_optimize(input_names, output_names, frozen_graph_def, True)
+    graph_def = tf2onnx.tfonnx.tf_optimize(input_names, output_names, frozen_graph_def, True)
     with tf.Graph().as_default() as tf_graph:
         tf.import_graph_def(graph_def, name='')
         if get_tensorboard_writer() is not None:
@@ -191,7 +189,7 @@ def convert_tensorflow(frozen_graph_def,
         if not input_names:
             input_nodes = list(_collect_input_nodes(tf_graph, output_names)[0])
             input_names = [nd_.outputs[0].name for nd_ in input_nodes]
-        g = tfonnx.process_tf_graph(tf_graph,
+        g = tf2onnx.tfonnx.process_tf_graph(tf_graph,
                                     continue_on_error=debug_mode,
                                     opset=target_opset,
                                     custom_op_handlers=custom_op_handlers,
