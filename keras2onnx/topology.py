@@ -157,6 +157,120 @@ class Topology:
         """
         self._check_structure()
 
+def get_onnx_container(topology, target_opset, channel_first_inputs=None):
+    """
+    This function is used to convert our Topology object defined in _parser.py into a ONNX model (type: ModelProto).
+    :param topology: The Topology object we are going to convert
+    :param model_name: GraphProto's name. Let "model" denote the returned model. The string "model_name" would be
+    assigned to "model.graph.name."
+    :param doc_string: A string attached to the produced model
+    :param target_opset: The maximun opset number in the model.
+    :param channel_first_inputs: A list of channel first input.
+    :return: container nodes to be added to the graph
+    """
+    topology.initialize_graph_status_for_traversing()
+
+    container = OnnxObjectContainer(target_opset)
+
+    # Put roots and leaves as ONNX's model into buffers. They will be added into ModelComponentContainer later.
+    tensor_inputs = {}
+    other_inputs = {}
+    tensor_outputs = {}
+    other_outputs = {}
+    for scope in topology.scopes:
+        for variable in scope.variables.values():
+            if variable.is_root:
+                if isinstance(variable.type, (TensorType, Int64Type, FloatType, StringType)):
+                    tensor_inputs[variable.raw_name] = variable
+                else:
+                    other_inputs[variable.raw_name] = variable
+            if variable.is_leaf:
+                if isinstance(variable.type, (TensorType, Int64Type, FloatType, StringType)):
+                    tensor_outputs[variable.raw_name] = variable
+                else:
+                    other_outputs[variable.raw_name] = variable
+
+    # Add roots the graph according to their order in the original model
+    nchw_inputs = []
+    if channel_first_inputs is None:
+        channel_first_inputs = []
+    for name in topology.raw_model.input_names:
+        if name in tensor_inputs:
+            onnx_input = tensor_inputs[name]  # type: Variable
+            if name in channel_first_inputs or \
+                    (name.endswith(':0') and name[:-2] in channel_first_inputs):
+                nchw_inputs.append(onnx_input.full_name)
+                s = onnx_input.type.shape
+                onnx_input.type.shape = [s[0], s[3], s[1], s[2]]
+            container.add_input(onnx_input)
+
+    for name in topology.raw_model.input_names:
+        if name in other_inputs:
+            container.add_input(other_inputs[name])
+
+    # Add leaves the graph according to their order in the original model
+    for name in topology.raw_model.output_names:
+        if name in tensor_outputs:
+            container.add_output(tensor_outputs[name])
+    for name in topology.raw_model.output_names:
+        if name in other_outputs:
+            container.add_output(other_outputs[name])
+
+    # Traverse the graph from roots to leaves
+    for operator in topology.topological_operator_iterator():
+        scope = next(scope for scope in topology.scopes if scope.name == operator.scope)
+        k2o_logger().debug("Converting the operator (%s): %s" % (operator.full_name, operator.type))
+        get_converter(operator.type)(scope, operator, container)
+
+    # When calling ModelComponentContainer's add_initializer(...), nothing is added into the input list.
+    # However, In ONNX, for target opset < 9, initializers should also be model's (GraphProto) inputs.
+    # Thus, we create ValueInfoProto objects from initializers (type: TensorProto) directly and then add them into model's input list.
+    extra_inputs = []  # ValueInfoProto list of the initializers
+    for tensor in container.initializers:
+        # Sometimes (especially when creating optional input values such as RNN's initial hidden state), an initializer
+        # is also one of the original model's input, so it has been added into the container's input list. If this is
+        # the case, we need to skip one iteration to avoid duplicated inputs.
+        if tensor.name in [value_info.name for value_info in container.inputs]:
+            continue
+
+        # Initializers are always tensors so we can just call make_tensor_value_info(...)
+        value_info = helper.make_tensor_value_info(tensor.name, tensor.data_type, tensor.dims)
+        extra_inputs.append(value_info)
+
+
+    # enable the ONNX optimizations (node sorting)
+    try:
+        import onnxconverter_common
+        nodes = onnxconverter_common.optimizer.optimize_onnx(container.nodes, nchw_inputs=nchw_inputs,
+                                                             inputs=container.inputs + extra_inputs,
+                                                             outputs=container.outputs)
+    except ImportError:
+        onnx_not_imported = 'onnxconverter_common is not imported,'
+        if nchw_inputs:
+            raise Exception(
+                '{} nchw_inputs does not make effect. Please set nchw_inputs to empty.'.format(onnx_not_imported))
+        k2o_logger().warning('{} so the convertor optimizer is not enabled.'.format(onnx_not_imported))
+        nodes = container.nodes
+    except Exception as e:
+        # either optimizer issue or converter issue, we just let it go to diagnose the issue from the converted model.
+        k2o_logger().warning('There is an error({}) happened during optimizing on the converted model!'.format(type(e)))
+        nodes = container.nodes
+
+    container.nodes = nodes
+
+    return container
+
+    #
+    # # Create a graph from its main components
+    # if target_opset < 9:
+    #     graph = helper.make_graph(nodes, 'keras_model', container.inputs + extra_inputs,
+    #                               container.outputs, container.initializers)
+    # else:
+    #     graph = helper.make_graph(nodes, 'keras_model', container.inputs,
+    #                               container.outputs, container.initializers)
+    #
+    # return graph
+
 
 def convert_topology(topology, model_name, doc_string, target_opset, channel_first_inputs=None):
     """

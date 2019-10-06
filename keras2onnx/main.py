@@ -3,21 +3,24 @@
 # Licensed under the MIT License. See License.txt in the project root for
 # license information.
 ###############################################################################
-import os
 import logging
+import os
+
 import tensorflow as tf
 import tf2onnx
+from onnx import GraphProto
 from tf2onnx import tfonnx
-from .proto import keras, is_tf_keras
-from .proto import onnx, get_opset_number_from_onnx
-from .topology import convert_topology
+
+from ._builtin import set_converter, tf2onnx_builtin_conversion
 from .common import with_variable
+from .common.utils import set_logger_level
 from .ke2onnx import static_set_ke2onnx_converters
 from .parser import parse_graph, tsname_to_node
-from .topology import Topology
-from .common.utils import set_logger_level
+from .proto import keras, is_tf_keras
+from .proto import onnx, get_opset_number_from_onnx
 from .subgraph import is_placeholder_node
-from ._builtin import set_converter, tf2onnx_builtin_conversion
+from .topology import Topology
+from .topology import convert_topology, get_onnx_container
 
 
 class KerasTfModelContainer(object):
@@ -59,6 +62,54 @@ def get_tensorboard_writer():
         return pb_visual_writer
 
     return None
+
+
+def convert_keras_sklearn(scope, operator, container, custom_op_conversions=None, debug_mode=False):
+    keras_model = operator.raw_operator
+    # model_proto = convert_keras(operator.raw_operator)
+
+    if isinstance(keras_model, tf.keras.Model) and not is_tf_keras:
+        raise Exception("This is a tensorflow keras model, but keras standalone converter is used." +
+                        " Please set environment variable TF_KERAS = 1.")
+
+    name = keras_model.name
+    target_opset = get_opset_number_from_onnx()
+    output_names = [n.name for n in keras_model.outputs]
+
+    static_set_ke2onnx_converters(set_converter)
+
+    sess = keras.backend.get_session()
+    if get_tensorboard_writer() is not None:
+        get_tensorboard_writer().add_graph(sess.graph)
+    raw_model_container = KerasTfModelContainer(sess.graph, keras_model)
+    # raw_model_container._input_raw_names = [_input.full_name for _input in operator.inputs]
+    # raw_model_container.model.inputs[0]._name = operator.inputs[0].full_name
+    raw_model_container.model.input_names = [operator.inputs[0].full_name]
+
+    topology = Topology(raw_model_container,
+                        target_opset=target_opset,
+                        custom_op_dict=custom_op_conversions)
+
+    topology.debug_mode = debug_mode
+    parse_graph(topology, sess.graph, target_opset, output_names)
+    # [topology.add_input(_input.full_name) for _input in operator.inputs]
+    topology.compile()
+
+    keras_container = get_onnx_container(topology, target_opset)
+    onnx_model = convert_keras(keras_model)
+
+    container.nodes.extend(keras_container.nodes)
+    # container.inputs.extend(keras_container.inputs)
+    container.outputs = keras_container.outputs
+    container.initializers.extend(keras_container.initializers)
+    container.node_domain_version_pair_sets = \
+        container.node_domain_version_pair_sets.union(keras_container.node_domain_version_pair_sets)
+    # container.node_domain_version_pair_sets.add(('tf.keras', target_opset))
+    # Add all nodes to the container
+    # [container.add_node(n.op_type, list(n.input), list(n.output), name=n.name) for n in nodes]
+
+    return
+    # container.add_node(model_proto.graph.node)
 
 
 def convert_keras(model, name=None, doc_string='', target_opset=None, channel_first_inputs=None, debug_mode=False,
