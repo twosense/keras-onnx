@@ -225,7 +225,7 @@ class OnnxObjectContainer(object):
     def add_value_info(self, variable):
         self.value_info.append(self._make_value_info(variable))
 
-    def add_node(self, op_type, inputs, outputs, op_domain='ai.onnx.keras', op_version=11, **attrs):
+    def add_node(self, op_type, inputs, outputs, op_domain='', op_version=1, **attrs):
         '''
         Add a NodeProto into the node list of the final ONNX model. If the input operator's domain-version information
         cannot be found in our domain-version pool (a Python set), we may add it.
