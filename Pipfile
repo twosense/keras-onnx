@@ -1,0 +1,22 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+pytest = "*"
+onnxruntime = "*"
+coverage = "*"
+Pillow = "*"
+tensorflow = "==1.14"
+
+[packages]
+numpy = "*"
+protobuf = "*"
+requests = "*"
+onnx = "==1.5.0"
+onnxconverter-common = ">=1.5.3"
+fire = "*"
+
+[requires]
+python_version = "3.7"
