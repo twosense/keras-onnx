@@ -9,6 +9,7 @@ onnxruntime = "*"
 coverage = "*"
 Pillow = "*"
 tensorflow = "==1.14"
+sklearn = "*"
 
 [packages]
 numpy = "*"
